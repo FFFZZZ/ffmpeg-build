@@ -90,7 +90,7 @@ jobs:
             --enable-libnpp \
             --nvccflags="-gencode arch=compute_75,code=sm_75 -O2" \
             --extra-cflags="-I${{ env.CUDA_INCLUDE_PATH }}" \
-            --extra-ldflags="-L${{ env.CUDA_LIB_PATH }}" \
+            --extra-ldflags="-L${{ env.CUDA_LIB_PATH }}" 
           make -j$(nproc)
           make install
 
