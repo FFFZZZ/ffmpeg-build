@@ -29,12 +29,15 @@ jobs:
       # --- 步骤 2: 准备 CUDA/NVENC 头文件和库文件 ---
       - name: 🔑 Unzip Windows CUDA SDK
         run: |
-          # 确保 CUDA 文件解压到一个可预测的路径
           mkdir -p /tmp/cuda-sdk
-          unzip cuda-windows-sdk.zip -d /tmp/cuda-sdk
+          # 替换为您 Release Asset 的实际下载链接
+          # 您可以使用 GitHub CLI 或直接链接
+          CUDA_ZIP_URL="https://release-assets.githubusercontent.com/github-production-release-asset/1110282498/07980b0a-1ac7-4b5d-ba34-bce64c4861a9?sp=r&sv=2018-11-09&sr=b&spr=https&se=2025-12-05T02%3A48%3A07Z&rscd=attachment%3B+filename%3Dcuda-windows-sdk.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2025-12-05T01%3A47%3A31Z&ske=2025-12-05T02%3A48%3A07Z&sks=b&skv=2018-11-09&sig=Ufo5Z6N%2Fk%2BHsOeJc1jvFCaODy%2FMk%2BC%2B5xv1jL6VO6P0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc2NDkwMzcxMywibmJmIjoxNzY0OTAwMTEzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.Y4vROoD6V3p8N0PXnTSZR0-couyWWcut5NMH-GIOTxw&response-content-disposition=attachment%3B%20filename%3Dcuda-windows-sdk.zip&response-content-type=application%2Foctet-stream" 
           
-          # 检查文件是否在预期的子目录中 (例如 /tmp/cuda-sdk/include, /tmp/cuda-sdk/lib/x64)
-          ls -R /tmp/cuda-sdk
+          echo "Downloading CUDA SDK from $CUDA_ZIP_URL"
+          curl -L "$CUDA_ZIP_URL" -o /tmp/cuda-sdk.zip
+          unzip /tmp/cuda-sdk.zip -d /tmp/cuda-sdk
+          ls -R /tmp/cuda-sdk # 检查解压结果
           
           echo "CUDA_INCLUDE_PATH=/tmp/cuda-sdk/include" >> $GITHUB_ENV
           echo "CUDA_LIB_PATH=/tmp/cuda-sdk/lib/x64" >> $GITHUB_ENV
