@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt update
           # 安装必要的工具
-          sudo apt install -y build-essential curl unzip wget
+          sudo apt install -y build-essential curl unzip wget subversion ragel curl texinfo g++ ed bison flex cvs yasm automake libtool autoconf gcc cmake git make pkg-config zlib1g-dev pax nasm gperf autogen bzip2 autoconf-archive p7zip-full meson clang python3-distutils python-is-python3 -y
 
           # 下载 rdp 的编译辅助脚本
           wget https://raw.githubusercontent.com/rdp/ffmpeg-windows-build-helpers/master/cross_compile_ffmpeg.sh -O cross_compile_ffmpeg.sh
