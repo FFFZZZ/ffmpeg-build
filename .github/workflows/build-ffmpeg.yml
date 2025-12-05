@@ -59,7 +59,8 @@ jobs:
           CHOICE: 3
           
         run: |
-          ./cross_compile_ffmpeg.sh 64
+          export compiler_flavors=win64
+          ./cross_compile_ffmpeg.sh win64
           
       # --- 步骤 4: 打包和上传结果 ---
       - name: 📦 Archive and Upload Artifact
