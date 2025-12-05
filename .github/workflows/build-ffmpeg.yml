@@ -23,8 +23,13 @@ jobs:
             # 安装 Clang, 因为 CUDA-LLVM/Clang 是一个更现代的替代方案
             sudo apt install -y clang
           
-          # 定义目标变量
-          echo "TARGET_HOST=x86_64-w64-mingw32" >> $GITHUB_ENV
+            if [ -f /usr/bin/pkg-config ]; then
+                # 创建一个带有 MinGW 前缀的符号链接，指向本地的 pkg-config
+                sudo ln -s /usr/bin/pkg-config /usr/bin/x86_64-w64-mingw32-pkg-config
+                echo "Created symbolic link for x86_64-w64-mingw32-pkg-config."
+            else
+                echo "Warning: Standard pkg-config not found, unable to create symlink."
+            fi
 
       # --- 步骤 2: 准备 CUDA/NVENC 头文件和库文件 ---
       - name: 🔑 Unzip Windows CUDA SDK
@@ -67,7 +72,7 @@ jobs:
           
           # 交叉编译配置
           ./configure \
-            --prefix=/usr/local/ffmpeg-win64 \
+          --prefix=/usr/local/ffmpeg-win64 \
             --cross-prefix=${{ env.TARGET_HOST }}- \
             --target-os=mingw32 \
             --arch=x86_64 \
@@ -79,20 +84,13 @@ jobs:
             --disable-shared \
             --disable-doc \
             --enable-nonfree \
-            \
-            # 启用 CUDA/NVENC/NVDEC 支持
             --enable-cuda-nvcc \
             --enable-cuvid \
             --enable-nvenc \
             --enable-libnpp \
-            \
-            # **RTX 2060 的计算能力是 7.5 (sm_75)**
             --nvccflags="-gencode arch=compute_75,code=sm_75 -O2" \
-            \
-            # 指定 Windows CUDA SDK 的头文件和库路径
             --extra-cflags="-I${{ env.CUDA_INCLUDE_PATH }}" \
             --extra-ldflags="-L${{ env.CUDA_LIB_PATH }}" \
-          
           make -j$(nproc)
           make install
 
