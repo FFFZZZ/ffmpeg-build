@@ -45,10 +45,19 @@ jobs:
       - name: ⬇️ Clone NV Codec Headers
         # NV Codec Headers 是 NVENC/NVDEC 所需的
         run: |
+          # -----------------------------------------------------
+          # 修复: 强制创建目标安装目录，确保路径存在
+          # -----------------------------------------------------
+          TARGET_DIR=/usr/${{ env.TARGET_HOST }}/include
+          sudo mkdir -p $TARGET_DIR
+          echo "Created installation directory: $TARGET_DIR"
+
           git clone https://github.com/FFmpeg/nv-codec-headers.git
           cd nv-codec-headers
-          # 安装到 MinGW 环境可以识别的路径
-          make install PREFIX=/usr/$TARGET_HOST
+          
+          # 使用 sudo 确保有权限写入 /usr/ 目录
+          # PREFIX=/usr/${{ env.TARGET_HOST }} 会将头文件安装到 $TARGET_DIR
+          sudo make install PREFIX=/usr/${{ env.TARGET_HOST }}
           
       # --- 步骤 3: 编译 FFmpeg ---
       - name: 🔨 Compile FFmpeg
