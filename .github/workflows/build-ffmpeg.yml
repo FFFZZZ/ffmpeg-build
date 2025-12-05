@@ -17,6 +17,7 @@ jobs:
       # --- 步骤 1: 安装通用依赖和 Build Helpers ---
       - name: 🛠️ Install Dependencies and Get Helper Script
         run: |
+          sudo add-apt-repository universe
           sudo apt update
           # 安装必要的工具
           sudo apt install -y build-essential curl unzip wget subversion ragel curl texinfo g++ ed bison flex cvs yasm automake libtool autoconf gcc cmake git make pkg-config zlib1g-dev pax nasm gperf autogen bzip2 autoconf-archive p7zip-full meson clang python3-distutils python-is-python3 -y
