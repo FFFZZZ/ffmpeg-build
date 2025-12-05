@@ -31,11 +31,14 @@ jobs:
         # 此步骤解压后，脚本将使用这些文件进行链接。
         run: |
           mkdir -p /tmp/cuda-sdk
-          unzip cuda-windows-sdk.zip -d /tmp/cuda-sdk
+          # 替换为您 Release Asset 的实际下载链接
+          # 您可以使用 GitHub CLI 或直接链接
+          CUDA_ZIP_URL="https://github.com/FFFZZZ/ffmpeg-build/releases/download/2026-1/cuda-windows-sdk.zip" 
           
-          # 检查解压后的路径是否符合脚本预期
-          # 脚本通常在 sandbox/cuda 目录下查找文件
-          ls -R /tmp/cuda-sdk
+          echo "Downloading CUDA SDK from $CUDA_ZIP_URL"
+          curl -L "$CUDA_ZIP_URL" -o /tmp/cuda-sdk.zip
+          unzip /tmp/cuda-sdk.zip -d /tmp/cuda-sdk
+          ls -R /tmp/cuda-sdk # 检查解压结果
           
       # --- 步骤 3: 运行交叉编译脚本 ---
       - name: 🔨 Run Cross-Compile Script for Win64
