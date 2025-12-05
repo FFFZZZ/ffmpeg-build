@@ -1,0 +1,67 @@
+name: Automated Windows FFmpeg Build with RTX 4060 Ti CUDA
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        
+      # --- 步骤 1: 安装通用依赖和 Build Helpers ---
+      - name: 🛠️ Install Dependencies and Get Helper Script
+        run: |
+          sudo apt update
+          # 安装必要的工具
+          sudo apt install -y build-essential curl unzip wget
+
+          # 下载 rdp 的编译辅助脚本
+          wget https://raw.githubusercontent.com/rdp/ffmpeg-windows-build-helpers/master/cross_compile_ffmpeg.sh -O cross_compile_ffmpeg.sh
+          chmod +x cross_compile_ffmpeg.sh
+          
+      # --- 步骤 2: 准备 Windows CUDA 文件 ---
+      - name: 🔑 Unzip Windows CUDA SDK
+        # 假设 'cuda-windows-sdk.zip' 在您的仓库根目录
+        # 此步骤解压后，脚本将使用这些文件进行链接。
+        run: |
+          mkdir -p /tmp/cuda-sdk
+          unzip cuda-windows-sdk.zip -d /tmp/cuda-sdk
+          
+          # 检查解压后的路径是否符合脚本预期
+          # 脚本通常在 sandbox/cuda 目录下查找文件
+          ls -R /tmp/cuda-sdk
+          
+      # --- 步骤 3: 运行交叉编译脚本 ---
+      - name: 🔨 Run Cross-Compile Script for Win64
+        env:
+          # **关键环境变量**：指明 CUDA 文件的根路径
+          CUSTOM_CUDA_PATH: /tmp/cuda-sdk 
+          
+          # 强制启用 CUDA/NVENC/NVDEC
+          BUILD_NVENC: YES
+          
+          # 覆盖 ffmpeg 的配置选项：启用 NVCC 编译和相关组件
+          CUSTOM_CONFIG_OPTIONS: "--enable-cuda-nvcc --enable-cuvid --enable-nvenc --enable-libnpp"
+          
+          # **RTX 4060 Ti 的计算能力 (8.9)**
+          CUSTOM_NVCC_FLAGS: "-gencode arch=compute_75,code=sm_75 -O2"
+          
+        run: |
+          ./cross_compile_ffmpeg.sh 64
+          
+      # --- 步骤 4: 打包和上传结果 ---
+      - name: 📦 Archive and Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-win64-cuda-rtx4060ti-static
+          # 脚本的输出路径通常在 sandbox 目录下
+          path: |
+            sandbox/x86_64/ffmpeg.exe
+            sandbox/x86_64/ffprobe.exe
+          retention-days: 7
