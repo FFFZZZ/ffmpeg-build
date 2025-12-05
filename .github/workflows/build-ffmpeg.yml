@@ -1,74 +1,93 @@
-name: Automated Windows FFmpeg Build with RTX 4060 Ti CUDA
+name: MinGW Cross-Compile FFmpeg (RTX 2060)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  build:
+  cross-compile:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
-        
-      # --- 步骤 1: 安装通用依赖和 Build Helpers ---
-      - name: 🛠️ Install Dependencies and Get Helper Script
-        run: |
-          sudo add-apt-repository universe
-          sudo apt update
-          # 安装必要的工具
-          sudo apt install -y build-essential curl unzip wget subversion ragel curl texinfo g++ ed bison flex cvs yasm automake libtool autoconf gcc cmake git make pkg-config zlib1g-dev pax nasm gperf autogen bzip2 autoconf-archive p7zip-full meson clang python3 python-is-python3 -y
 
-          # 下载 rdp 的编译辅助脚本
-          wget https://raw.githubusercontent.com/rdp/ffmpeg-windows-build-helpers/master/cross_compile_ffmpeg.sh -O cross_compile_ffmpeg.sh
-          chmod +x cross_compile_ffmpeg.sh
+      # --- 步骤 1: 安装通用依赖和 MinGW-w64 交叉编译器 ---
+      - name: 🛠️ Install Toolchain and Dependencies
+        run: |
+          sudo apt update
+          # 安装 MinGW-w64 工具链 (用于 Windows 64-bit 目标)
+          sudo apt install -y build-essential git wget yasm nasm pkg-config \
+            g++-mingw-w64-x86-64 \
+            # 安装 Clang, 因为 CUDA-LLVM/Clang 是一个更现代的替代方案
+            sudo apt install -y clang
           
-      # --- 步骤 2: 准备 Windows CUDA 文件 ---
+          # 定义目标变量
+          echo "TARGET_HOST=x86_64-w64-mingw32" >> $GITHUB_ENV
+
+      # --- 步骤 2: 准备 CUDA/NVENC 头文件和库文件 ---
       - name: 🔑 Unzip Windows CUDA SDK
-        # 假设 'cuda-windows-sdk.zip' 在您的仓库根目录
-        # 此步骤解压后，脚本将使用这些文件进行链接。
         run: |
+          # 确保 CUDA 文件解压到一个可预测的路径
           mkdir -p /tmp/cuda-sdk
-          # 替换为您 Release Asset 的实际下载链接
-          # 您可以使用 GitHub CLI 或直接链接
-          CUDA_ZIP_URL="https://release-assets.githubusercontent.com/github-production-release-asset/1110282498/07980b0a-1ac7-4b5d-ba34-bce64c4861a9?sp=r&sv=2018-11-09&sr=b&spr=https&se=2025-12-05T02%3A48%3A07Z&rscd=attachment%3B+filename%3Dcuda-windows-sdk.zip&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2025-12-05T01%3A47%3A31Z&ske=2025-12-05T02%3A48%3A07Z&sks=b&skv=2018-11-09&sig=Ufo5Z6N%2Fk%2BHsOeJc1jvFCaODy%2FMk%2BC%2B5xv1jL6VO6P0%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc2NDkwMzcxMywibmJmIjoxNzY0OTAwMTEzLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.Y4vROoD6V3p8N0PXnTSZR0-couyWWcut5NMH-GIOTxw&response-content-disposition=attachment%3B%20filename%3Dcuda-windows-sdk.zip&response-content-type=application%2Foctet-stream" 
+          unzip cuda-windows-sdk.zip -d /tmp/cuda-sdk
           
-          echo "Downloading CUDA SDK from $CUDA_ZIP_URL"
-          curl -L "$CUDA_ZIP_URL" -o /tmp/cuda-sdk.zip
-          unzip /tmp/cuda-sdk.zip -d /tmp/cuda-sdk
-          ls -R /tmp/cuda-sdk # 检查解压结果
+          # 检查文件是否在预期的子目录中 (例如 /tmp/cuda-sdk/include, /tmp/cuda-sdk/lib/x64)
+          ls -R /tmp/cuda-sdk
           
-      # --- 步骤 3: 运行交叉编译脚本 ---
-      - name: 🔨 Run Cross-Compile Script for Win64
-        env:
-          # **关键环境变量**：指明 CUDA 文件的根路径
-          CUSTOM_CUDA_PATH: /tmp/cuda-sdk 
+          echo "CUDA_INCLUDE_PATH=/tmp/cuda-sdk/include" >> $GITHUB_ENV
+          echo "CUDA_LIB_PATH=/tmp/cuda-sdk/lib/x64" >> $GITHUB_ENV
           
-          # 强制启用 CUDA/NVENC/NVDEC
-          BUILD_NVENC: YES
-          
-          # 覆盖 ffmpeg 的配置选项：启用 NVCC 编译和相关组件
-          CUSTOM_CONFIG_OPTIONS: "--enable-cuda-nvcc --enable-cuvid --enable-nvenc --enable-libnpp"
-          
-          # **RTX 4060 Ti 的计算能力 (8.9)**
-          CUSTOM_NVCC_FLAGS: "-gencode arch=compute_75,code=sm_75 -O2"
-          # 自动选择选项 3: Win64 (64-bit only)
-          CHOICE: 3
-          
+      - name: ⬇️ Clone NV Codec Headers
+        # NV Codec Headers 是 NVENC/NVDEC 所需的
         run: |
-          export compiler_flavors=win64
-          ./cross_compile_ffmpeg.sh win64
+          git clone https://github.com/FFmpeg/nv-codec-headers.git
+          cd nv-codec-headers
+          # 安装到 MinGW 环境可以识别的路径
+          make install PREFIX=/usr/$TARGET_HOST
           
+      # --- 步骤 3: 编译 FFmpeg ---
+      - name: 🔨 Compile FFmpeg
+        run: |
+          git clone https://git.ffmpeg.org/ffmpeg.git ffmpeg_src
+          cd ffmpeg_src
+          
+          # 交叉编译配置
+          ./configure \
+            --prefix=/usr/local/ffmpeg-win64 \
+            --cross-prefix=${{ env.TARGET_HOST }}- \
+            --target-os=mingw32 \
+            --arch=x86_64 \
+            --enable-cross-compile \
+            --pkg-config-flags="--static" \
+            --enable-gpl \
+            --enable-version3 \
+            --enable-static \
+            --disable-shared \
+            --disable-doc \
+            --enable-nonfree \
+            \
+            # 启用 CUDA/NVENC/NVDEC 支持
+            --enable-cuda-nvcc \
+            --enable-cuvid \
+            --enable-nvenc \
+            --enable-libnpp \
+            \
+            # **RTX 2060 的计算能力是 7.5 (sm_75)**
+            --nvccflags="-gencode arch=compute_75,code=sm_75 -O2" \
+            \
+            # 指定 Windows CUDA SDK 的头文件和库路径
+            --extra-cflags="-I${{ env.CUDA_INCLUDE_PATH }}" \
+            --extra-ldflags="-L${{ env.CUDA_LIB_PATH }}" \
+          
+          make -j$(nproc)
+          make install
+
       # --- 步骤 4: 打包和上传结果 ---
       - name: 📦 Archive and Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ffmpeg-win64-cuda-rtx4060ti-static
-          # 脚本的输出路径通常在 sandbox 目录下
-          path: |
-            sandbox/x86_64/ffmpeg.exe
-            sandbox/x86_64/ffprobe.exe
+          name: ffmpeg-win64-rtx2060-static
+          path: /usr/local/ffmpeg-win64/bin/ffmpeg.exe
           retention-days: 7
